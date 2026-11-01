@@ -1,0 +1,371 @@
+/* 3D Anatomy viewer + Chat / 3D tabs */
+
+.view-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 14px 28px 0;
+}
+
+.view-tab {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-soft);
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.view-tab.active {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.anatomy-loading {
+  padding: 40px 28px;
+  color: var(--muted);
+}
+
+.anatomy-wrap {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  padding: 16px 28px 24px;
+}
+
+.anatomy-stage {
+  position: relative;
+  min-height: 420px;
+  background: radial-gradient(circle at 50% 35%, #ffffff 0%, #e9eee6 100%);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.anatomy-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.anatomy-panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.anatomy-panel h2 {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 6px;
+}
+
+.anatomy-disclaimer {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  background: var(--copper-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+}
+
+.anatomy-control {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.anatomy-control input[type="range"] {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  accent-color: var(--copper);
+}
+
+.anatomy-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  margin-bottom: 8px;
+}
+
+.anatomy-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0;
+}
+
+.anatomy-chip {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.anatomy-chip.active {
+  background: var(--copper);
+  border-color: var(--copper);
+  color: #ffffff;
+}
+
+.anatomy-info {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.anatomy-info h3 {
+  font-family: var(--font-display);
+  font-size: 17px;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+
+.anatomy-info p {
+  margin: 0;
+}
+
+.organ-label {
+  background: rgba(22, 48, 43, 0.85);
+  color: #f2f4ee;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 780px) {
+  .view-tabs {
+    padding: 12px 16px 0;
+  }
+  .anatomy-wrap {
+    grid-template-columns: 1fr;
+    padding: 12px 16px 20px;
+  }
+  .anatomy-stage {
+    min-height: 380px;
+  }
+}
+
+/* ---------- Hologram mode ---------- */
+.anatomy-stage.holo {
+  background: radial-gradient(circle at 50% 40%, #0b2a3a 0%, #04121c 75%);
+  border-color: #0e4a63;
+}
+.anatomy-stage.holo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(79, 209, 255, 0.07) 0,
+    rgba(79, 209, 255, 0.07) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  animation: holo-flicker 5s infinite;
+}
+.anatomy-stage.holo::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 90px;
+  top: -90px;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(to bottom, transparent, rgba(79, 209, 255, 0.12), transparent);
+  animation: holo-sweep 4.5s linear infinite;
+}
+.anatomy-stage.holo .anatomy-hint { color: #7fb8cc; }
+
+@keyframes holo-sweep {
+  from { transform: translateY(0); }
+  to { transform: translateY(560px); }
+}
+@keyframes holo-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+  52% { opacity: 1; }
+}
+
+.organ-label.hl {
+  background: rgba(255, 140, 0, 0.92);
+  color: #1a0f00;
+  font-weight: 600;
+}
+
+.anatomy-involved {
+  background: #fff4e5;
+  border: 1px solid #f2c27a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+.anatomy-involved-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9a5b00;
+  margin-bottom: 6px;
+}
+.anatomy-involved-item {
+  background: #ffb347;
+  border: 0;
+  border-radius: 999px;
+  padding: 5px 11px;
+  margin: 0 6px 6px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #1a0f00;
+}
+
+/* ---------- Chat -> 3D link bar ---------- */
+.organ-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 28px 8px;
+  padding: 10px 14px;
+  background: #fff4e5;
+  border: 1px solid #f2c27a;
+  border-radius: 10px;
+  font-size: 13.5px;
+}
+.organ-bar-label { font-weight: 600; color: #9a5b00; }
+.organ-bar-chip {
+  background: #ffb347;
+  color: #1a0f00;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.organ-bar-btn {
+  margin-left: auto;
+  background: var(--ink);
+  color: var(--paper);
+  border: 0;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+@media (max-width: 780px) {
+  .organ-bar { margin: 0 16px 8px; }
+}
+
+/* ---------- Real model viewer ---------- */
+.viewer-drop-wrap { padding: 20px 28px; }
+.viewer-drop {
+  max-width: 620px;
+  margin: 24px auto;
+  padding: 40px 28px;
+  text-align: center;
+  background: var(--panel);
+  border: 2px dashed var(--line);
+  border-radius: 16px;
+}
+.viewer-drop.over { border-color: var(--copper); background: var(--copper-soft); }
+.viewer-drop h2 { margin: 0 0 8px; font-family: var(--font-display); }
+.viewer-drop p { color: var(--ink-soft); margin: 0 0 18px; }
+.viewer-link {
+  display: block;
+  margin: 14px auto 0;
+  background: none;
+  border: 0;
+  color: var(--ink-soft);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 13px;
+}
+.viewer-chip {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  background: rgba(4, 18, 28, 0.85);
+  color: #bfeaff;
+  border: 1px solid #0e4a63;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  pointer-events: none;
+}
+.viewer-loading { color: #bfeaff; font-size: 14px; white-space: nowrap; }
+.viewer-error { padding: 40px; color: #bfeaff; text-align: center; position: relative; z-index: 3; }
+.viewer-error-detail { color: #c0392b; font-size: 13px; word-break: break-word; }
+.viewer-error .viewer-error-detail { color: #ffb3a8; }
+.viewer-search {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 13.5px;
+  margin-bottom: 8px;
+  background: var(--panel);
+}
+.viewer-parts {
+  max-height: 190px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+.viewer-part {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  padding: 7px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.viewer-part:hover { background: var(--copper-soft); }
+.viewer-part.active { background: #ffb347; font-weight: 600; }
+.viewer-part.off { opacity: 0.4; text-decoration: line-through; }
+.viewer-empty { padding: 10px; font-size: 13px; color: var(--muted); margin: 0; }
+.viewer-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.viewer-act {
+  background: var(--ink);
+  color: var(--paper);
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 11px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.viewer-act:disabled { opacity: 0.5; cursor: wait; }
+.viewer-ai { white-space: pre-wrap; font-size: 13.5px; line-height: 1.55; margin: 8px 0 0; }
+.viewer-footer { margin-top: 12px; }

@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Medibot · 3D Anatomy Atlas</title>
+<style>
+  :root{--bg:#050a12;--panel:rgba(10,20,34,.86);--line:rgba(80,200,230,.25);--cy:#35e0ff;--tx:#dbe9f2;--mut:#8fa6b6}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:radial-gradient(ellipse at 50% 35%,#0e2236 0%,#050a12 70%);color:var(--tx);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+  canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .panel{position:fixed;background:var(--panel);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  #left{top:12px;left:12px;width:270px;max-height:calc(100% - 70px);overflow:auto}
+  #info{top:12px;right:12px;width:340px;max-height:calc(100% - 70px);overflow:auto;display:none}
+  h1{font-size:15px;margin:0 0 2px;letter-spacing:.3px}
+  h1 span{color:var(--cy)}
+  .sub{color:var(--mut);font-size:12px;margin-bottom:10px}
+  h3{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut);margin:14px 0 6px}
+  .sys{display:flex;align-items:center;gap:8px;padding:5px 0}
+  .sys input{accent-color:var(--cy);width:16px;height:16px}
+  .sys label{flex:1;cursor:pointer}
+  .sys small{color:var(--mut);font-size:11px}
+  input[type=text]{width:100%;padding:9px 11px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--tx);outline:none}
+  input[type=text]:focus{border-color:var(--cy)}
+  input[type=range]{width:100%;accent-color:var(--cy)}
+  select{width:100%;padding:7px;border-radius:8px;border:1px solid var(--line);background:#0b1826;color:var(--tx)}
+  #results{margin-top:6px;max-height:210px;overflow:auto}
+  .res{padding:7px 8px;border-radius:8px;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+  .res:hover{background:rgba(53,224,255,.12)}
+  .res small{color:var(--mut);white-space:nowrap}
+  button{background:rgba(53,224,255,.12);border:1px solid var(--line);color:var(--tx);padding:8px 10px;border-radius:10px;cursor:pointer;font:inherit}
+  button:hover{background:rgba(53,224,255,.25)}
+  .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .row button{flex:1;min-width:0;white-space:nowrap}
+  .tog{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .tog input{accent-color:var(--cy);width:16px;height:16px}
+  #info h2{margin:0 0 4px;font-size:18px;line-height:1.25}
+  .tag{display:inline-block;padding:2px 9px;border-radius:99px;background:rgba(53,224,255,.15);border:1px solid var(--line);font-size:11px;margin:0 4px 6px 0}
+  #latin{color:var(--mut);font-style:italic;margin-bottom:8px}
+  #def{white-space:pre-wrap;max-height:42vh;overflow:auto;padding-right:4px}
+  #src{color:var(--mut);font-size:11px;margin-top:8px}
+  #close{position:absolute;top:8px;right:10px;background:none;border:none;font-size:20px;padding:2px 8px}
+  #foot{position:fixed;left:0;right:0;bottom:0;padding:7px 14px;font-size:11px;color:var(--mut);background:linear-gradient(transparent,rgba(5,10,18,.9));text-align:center;pointer-events:none}
+  #foot a{color:var(--cy);pointer-events:auto}
+  #tip{position:fixed;pointer-events:none;background:rgba(5,10,18,.92);border:1px solid var(--cy);color:var(--tx);padding:4px 9px;border-radius:8px;font-size:12px;display:none;z-index:5;white-space:nowrap}
+  #boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:#050a12;z-index:20;transition:opacity .6s}
+  #bar{width:220px;height:5px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden}
+  #bar i{display:block;height:100%;width:0;background:var(--cy);transition:width .2s}
+  #focusBar{display:none;top:12px;left:50%;transform:translateX(-50%);align-items:center;gap:12px;padding:8px 12px;z-index:7}
+  #menuBtn{display:none;position:fixed;top:10px;left:10px;z-index:6}
+  @media (max-width:760px){
+    #menuBtn{display:block}
+    #left{top:56px;left:8px;right:8px;width:auto;max-height:55%;display:none}
+    #left.open{display:block}
+    #info{top:auto;bottom:34px;left:8px;right:8px;width:auto;max-height:44%}
+    #def{max-height:20vh}
+  }
+</style>
+<script type="importmap">
+{"imports":{"three":"./lib/three-build/three.module.js"}}
+</script>
+</head>
+<body>
+<div id="boot"><div style="font-size:18px">Loading human anatomy…</div><div id="bar"><i></i></div><div id="bootTxt" class="sub">Starting up</div></div>
+<button id="menuBtn">☰ Menu</button>
+<div id="tip"></div>
+<div id="focusBar" class="panel"><span id="focusTxt"></span><button id="focusClear">Show everything</button></div>
+
+<div id="left" class="panel">
+  <h1><span>Medibot</span> · 3D Anatomy Atlas</h1>
+  <div class="sub">Tap any structure to name it. Drag to rotate, scroll or pinch to zoom.</div>
+
+  <input id="q" type="text" placeholder="Search a structure (e.g. femur, aorta, liver)" autocomplete="off">
+  <div id="results"></div>
+
+  <h3>Body systems</h3>
+  <div id="systems"></div>
+
+  <h3>Split apart</h3>
+  <input id="explode" type="range" min="0" max="100" value="0">
+
+  <h3>Cross-section</h3>
+  <select id="clipAxis">
+    <option value="off">Off</option>
+    <option value="y">Slice top to bottom</option>
+    <option value="x">Slice side to side</option>
+    <option value="z">Slice front to back</option>
+  </select>
+  <input id="clip" type="range" min="0" max="100" value="100" style="margin-top:6px" disabled>
+
+  <h3>Look</h3>
+  <div class="tog"><input id="holo" type="checkbox"><label for="holo">Hologram mode</label></div>
+  <div class="row">
+    <button id="resetView">Reset view</button>
+    <button id="showAll">Show all parts</button>
+  </div>
+</div>
+
+<div id="info" class="panel">
+  <button id="close" title="Close">×</button>
+  <h2 id="nm"></h2>
+  <div id="tags"></div>
+  <div id="latin"></div>
+  <div id="def"></div>
+  <div id="src">Definition: Wikipedia via Z-Anatomy (CC BY-SA 4.0). Reference only, not medical advice.</div>
+  <div class="row">
+    <button id="bHide">Hide this</button>
+    <button id="bIso">Isolate</button>
+    <button id="bGhost">Ghost others</button>
+  </div>
+</div>
+
+<div id="foot">3D model &amp; definitions: <a href="https://github.com/Z-Anatomy/Models-of-human-anatomy" target="_blank" rel="noopener">Z-Anatomy – The libre 3D atlas of anatomy</a> (based on BodyParts3D), CC BY-SA 4.0. For education and reference only; not for diagnosis.</div>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from './lib/jsm/controls/OrbitControls.js';
+import {GLTFLoader} from './lib/jsm/loaders/GLTFLoader.js';
+import {MeshoptDecoder} from './lib/jsm/libs/meshopt_decoder.module.js';
+
+const SYSTEMS=[
+  {k:'skeletal',label:'Skeleton',on:true},
+  {k:'joints',label:'Joints & ligaments',on:false},
+  {k:'muscular',label:'Muscles',on:false},
+  {k:'cardiovascular',label:'Heart & blood vessels',on:true},
+  {k:'nervous',label:'Brain & nerves',on:false},
+  {k:'lymphoid',label:'Lymphatic system',on:false},
+  {k:'visceral',label:'Organs',on:true},
+];
+const FACTOR={skeletal:.6,joints:.6,muscular:1,cardiovascular:.5,nervous:.5,lymphoid:.5,visceral:.5};
+const SYSLABEL=Object.fromEntries(SYSTEMS.map(s=>[s.k,s.label]));
+const $=id=>document.getElementById(id);
+
+/* ---------- scene ---------- */
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.localClippingEnabled=true;
+document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,innerWidth/innerHeight,0.005,30);
+const HOME={pos:new THREE.Vector3(0,0.95,2.9),target:new THREE.Vector3(0,0.85,0)};
+camera.position.copy(HOME.pos);
+scene.add(camera);
+scene.add(new THREE.HemisphereLight(0xffffff,0x1b2a3a,1.0));
+const headLight=new THREE.DirectionalLight(0xffffff,1.6); headLight.position.set(0.4,0.6,1); camera.add(headLight);
+const back=new THREE.DirectionalLight(0x6fc8ff,0.6); back.position.set(-1,0.5,-1); scene.add(back);
+const grid=new THREE.GridHelper(2.4,24,0x1b6b7a,0x0e2f3a); grid.material.transparent=true; grid.material.opacity=.5; scene.add(grid);
+
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.copy(HOME.target);
+controls.enableDamping=true; controls.dampingFactor=.08;
+controls.minDistance=0.03; controls.maxDistance=8;
+controls.zoomToCursor=true; controls.zoomSpeed=1.1;
+controls.update();
+
+/* ---------- state ---------- */
+let INDEX={};
+const groups={}, loaded={}, loading={};
+const sysOn=Object.fromEntries(SYSTEMS.map(s=>[s.k,s.on]));
+const allMeshes=[], byKey=new Map();
+let selected=null, isolate=false, ghost=false, holo=false, explode=0;
+const focus=new Set();
+let pickables=[];
+const clipPlanes=[];
+const matCache=new Map();
+const BODY_C=new THREE.Vector3(0,0.85,0);
+
+/* ---------- materials ---------- */
+function mk(opts){ const m=new THREE.MeshStandardMaterial({roughness:.55,metalness:.05,side:THREE.DoubleSide,...opts}); m.clippingPlanes=clipPlanes; return m; }
+function getMat(hex){ let m=matCache.get(hex); if(!m){m=mk({color:hex}); matCache.set(hex,m);} return m; }
+const holoMat=new THREE.MeshBasicMaterial({color:0x35e0ff,transparent:true,opacity:.11,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}); holoMat.clippingPlanes=clipPlanes;
+const ghostMat=new THREE.MeshBasicMaterial({color:0x9fb8c8,transparent:true,opacity:.07,depthWrite:false,side:THREE.DoubleSide}); ghostMat.clippingPlanes=clipPlanes;
+const hlMat=mk({color:0x35e0ff,emissive:0x00cfff,emissiveIntensity:.8});
+const hlHolo=new THREE.MeshBasicMaterial({color:0xbff6ff,side:THREE.DoubleSide}); hlHolo.clippingPlanes=clipPlanes;
+const allSpecial=[holoMat,ghostMat,hlMat,hlHolo];
+
+function colorFor(sys,name){
+  const n=name.toLowerCase();
+  switch(sys){
+    case 'skeletal': return n.includes('cartilage')?0xbcd2dc:0xeee6d0;
+    case 'joints': return n.includes('cartilage')?0x9cc7d9:0xcfe0c0;
+    case 'muscular': return /tendon|aponeurosis|fascia|sheath|retinaculum/.test(n)?0xe8dcc2:0xb9473b;
+    case 'cardiovascular':
+      if(/vein|venous|vena|sinus|plexus|jugular|azygos|portal/.test(n)) return 0x3b66c4;
+      if(/ventricle|atrium|valve|leaflet|papillary|heart|septum|cusp/.test(n)) return 0xa8242b;
+      return 0xd8343f;
+    case 'nervous':
+      if(/brain|cerebr|cortex|gyrus|lobe|cerebell|thalam|hippocamp|corpus|pons|medulla|ventric|nucleus|matter|hypothal|pituit|midbrain|basal|striat/.test(n)) return 0xd9b9bd;
+      if(/eye|lens|cornea|retina|vitreous|sclera|iris/.test(n)) return 0xf2f2f2;
+      return 0xf3d46d;
+    case 'lymphoid': return /spleen|thymus|tonsil/.test(n)?0x6fae6a:0x7fd08a;
+    case 'visceral':
+      if(/lung|bronch|trachea|larynx/.test(n)) return 0xe9a6ad;
+      if(/liver/.test(n)) return 0x7d3b2c;
+      if(/kidney|adrenal|ureter/.test(n)) return 0x8e3b3d;
+      if(/stomach/.test(n)) return 0xd98a7b;
+      if(/intestin|colon|caecum|cecum|rectum|appendix|duoden|jejun|ileum/.test(n)) return 0xd9958f;
+      if(/gall|bile|pancrea|spleen/.test(n)) return 0xb8864a;
+      if(/bladder|uterus|ovary|prostate|testis|penis|vagina/.test(n)) return 0xc98a9a;
+      return 0xc97b84;
+  }
+  return 0xcccccc;
+}
+
+/* ---------- name helpers ---------- */
+function keyOf(o){
+  let n=o, first=null;
+  while(n){ const nm=n.userData&&n.userData.name; if(nm){ if(!first) first=nm; if(INDEX[nm]) return {key:nm,raw:nm}; } n=n.parent; }
+  return {key:null,raw:first||o.name||'Structure'};
+}
+function titleOf(m){
+  const e=m.userData.info;
+  if(e){ const base=e.p?'('+e.n+')':e.n; return base+(e.s?' ('+e.s+')':''); }
+  return m.userData.raw.replace(/\.[a-z0-9]{1,4}$/,'');
+}
+
+/* ---------- loading ---------- */
+const loader=new GLTFLoader(); loader.setMeshoptDecoder(MeshoptDecoder);
+function setBoot(p,t){ document.querySelector('#bar i').style.width=(p*100)+'%'; if(t) $('bootTxt').textContent=t; }
+function setSysStatus(k,txt){ const el=$('st_'+k); if(el) el.textContent=txt; }
+
+function loadSystem(k){
+  if(loaded[k]) return Promise.resolve();
+  if(loading[k]) return loading[k];
+  loading[k]=new Promise((res,rej)=>{
+    loader.load('./models/'+k+'.glb',gltf=>{
+      const meshes=[]; gltf.scene.updateMatrixWorld(true);
+      gltf.scene.traverse(o=>{ if(o.isMesh) meshes.push(o); });
+      const g=new THREE.Group(); g.name=k; scene.add(g); groups[k]=g;
+      for(const m of meshes){
+        const {key,raw}=keyOf(m);
+        const info=key?INDEX[key]:null;
+        m.userData={...m.userData,key,raw,info,sys:k};
+        g.attach(m);
+        const base=getMat(colorFor(k, info?info.n:raw));
+        m.userData.base=base; m.material=base;
+        const box=new THREE.Box3().setFromObject(m);
+        const c=box.getCenter(new THREE.Vector3());
+        m.userData.c=c;
+        const v=c.clone().sub(BODY_C); v.y*=.35;
+        m.userData.dir=v.lengthSq()>1e-8?v.normalize():new THREE.Vector3(0,0,0);
+        m.userData.p0=m.position.clone();
+        m.userData.hidden=false;
+        m.visible=sysOn[k];
+        allMeshes.push(m);
+        if(key&&!byKey.has(key)) byKey.set(key,m);
+      }
+      loaded[k]=true; setSysStatus(k,'');
+      refreshAll(); res();
+    },xhr=>{ if(xhr.total) setSysStatus(k,Math.round(xhr.loaded/xhr.total*100)+'%'); else setSysStatus(k,'…'); },err=>{ setSysStatus(k,'failed'); console.error(err); rej(err); });
+  });
+  return loading[k];
+}
+
+/* ---------- refresh ---------- */
+function refreshVisibility(){
+  for(const m of allMeshes){
+    m.visible=!!sysOn[m.userData.sys] && !m.userData.hidden && (!isolate || m===selected);
+  }
+  pickables=allMeshes.filter(m=>m.visible);
+}
+function refreshMaterials(){
+  const dim=(ghost&&selected)||focus.size>0;
+  for(const m of allMeshes){
+    if(m===selected||focus.has(m)) m.material=holo?hlHolo:hlMat;
+    else if(dim) m.material=ghostMat;
+    else if(holo) m.material=holoMat;
+    else m.material=m.userData.base;
+  }
+  if(selected&&!holo){ hlMat.color.copy(selected.userData.base.color); }
+}
+function applyExplode(){
+  const t=explode;
+  for(const m of allMeshes){
+    const f=FACTOR[m.userData.sys]||.5;
+    m.position.copy(m.userData.p0).addScaledVector(m.userData.dir,t*.55*f);
+  }
+}
+function refreshAll(){ refreshVisibility(); refreshMaterials(); applyExplode(); }
+
+/* ---------- selection / info ---------- */
+function select(m,fly=true){
+  selected=m; refreshAll();
+  if(!m){ $('info').style.display='none'; return; }
+  const e=m.userData.info;
+  $('nm').textContent=titleOf(m);
+  $('tags').innerHTML='<span class="tag">'+(SYSLABEL[m.userData.sys]||'')+'</span>'+(e&&e.s?'<span class="tag">'+e.s+' side</span>':'');
+  $('latin').textContent=e&&e.l?e.l:'';
+  $('def').textContent=e&&e.i?e.i:'No written description for this structure yet. The 3D model and its official name are shown.';
+  $('src').style.display=e&&e.i?'block':'none';
+  $('bHide').textContent='Hide this';
+  $('bIso').textContent=isolate?'Show others':'Isolate';
+  $('bGhost').textContent=ghost?'Solid others':'Ghost others';
+  $('info').style.display='block';
+  if(fly) flyTo(m);
+}
+let tween=null;
+function flyTo(m){
+  const box=new THREE.Box3().setFromObject(m);
+  const c=box.getCenter(new THREE.Vector3());
+  const size=box.getSize(new THREE.Vector3()).length();
+  const dist=Math.max(size*1.6,0.12);
+  const dir=camera.position.clone().sub(controls.target).normalize();
+  tween={t0:performance.now(),dur:700,p0:camera.position.clone(),t0v:controls.target.clone(),p1:c.clone().addScaledVector(dir,dist),t1:c};
+}
+function flyHome(){
+  tween={t0:performance.now(),dur:700,p0:camera.position.clone(),t0v:controls.target.clone(),p1:HOME.pos.clone(),t1:HOME.target.clone()};
+}
+function stepTween(){
+  if(!tween) return;
+  let u=(performance.now()-tween.t0)/tween.dur; if(u>=1){u=1;}
+  const e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+  camera.position.lerpVectors(tween.p0,tween.p1,e);
+  controls.target.lerpVectors(tween.t0v,tween.t1,e);
+  if(u>=1) tween=null;
+}
+
+/* ---------- picking ---------- */
+const ray=new THREE.Raycaster(); const ptr=new THREE.Vector2();
+function pick(ev){
+  const r=renderer.domElement.getBoundingClientRect();
+  ptr.set(((ev.clientX-r.left)/r.width)*2-1,-((ev.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ptr,camera);
+  const hits=ray.intersectObjects(pickables,false);
+  return hits.length?hits[0].object:null;
+}
+let down=null;
+renderer.domElement.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY};$('tip').style.display='none';});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(!down) return;
+  const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y); down=null;
+  if(moved>5) return;
+  const m=pick(e);
+  select(m,false);
+});
+let lastMove=0;
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(down||e.pointerType==='touch') return;
+  const now=performance.now(); if(now-lastMove<80) return; lastMove=now;
+  const m=pick(e), tip=$('tip');
+  if(m){ tip.textContent=titleOf(m); tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px'; }
+  else tip.style.display='none';
+});
+
+/* ---------- UI wiring ---------- */
+function buildSystems(){
+  const box=$('systems');
+  for(const s of SYSTEMS){
+    const d=document.createElement('div'); d.className='sys';
+    d.innerHTML=`<input type="checkbox" id="c_${s.k}" ${s.on?'checked':''}><label for="c_${s.k}">${s.label}</label><small id="st_${s.k}"></small>`;
+    box.appendChild(d);
+    d.querySelector('input').addEventListener('change',async e=>{
+      sysOn[s.k]=e.target.checked;
+      if(e.target.checked&&!loaded[s.k]){ try{ await loadSystem(s.k);}catch(_){ e.target.checked=false; sysOn[s.k]=false; } }
+      refreshAll();
+    });
+  }
+}
+$('explode').addEventListener('input',e=>{explode=e.target.value/100; applyExplode();});
+$('holo').addEventListener('change',e=>{holo=e.target.checked; refreshMaterials();});
+$('close').addEventListener('click',()=>select(null));
+$('resetView').addEventListener('click',()=>{ isolate=false; ghost=false; select(null); flyHome(); });
+$('showAll').addEventListener('click',()=>{ for(const m of allMeshes) m.userData.hidden=false; isolate=false; ghost=false; refreshAll(); if(selected) select(selected,false); });
+$('bHide').addEventListener('click',()=>{ if(!selected) return; selected.userData.hidden=true; const m=selected; selected=null; isolate=false; refreshAll(); $('info').style.display='none'; });
+$('bIso').addEventListener('click',()=>{ isolate=!isolate; refreshAll(); $('bIso').textContent=isolate?'Show others':'Isolate'; });
+$('bGhost').addEventListener('click',()=>{ ghost=!ghost; refreshMaterials(); $('bGhost').textContent=ghost?'Solid others':'Ghost others'; });
+$('menuBtn').addEventListener('click',()=>$('left').classList.toggle('open'));
+
+/* clip */
+const RANGES={y:[0,1.75],x:[-.36,.36],z:[-.16,.16]};
+function applyClip(){
+  const axis=$('clipAxis').value, s=$('clip');
+  const had=clipPlanes.length; clipPlanes.length=0;
+  if(axis==='off'){ s.disabled=true; }
+  else{
+    s.disabled=false;
+    const [a,b]=RANGES[axis]; const c=a+(b-a)*(s.value/100);
+    const n=new THREE.Vector3(axis==='x'?-1:0,axis==='y'?-1:0,axis==='z'?-1:0);
+    clipPlanes.push(new THREE.Plane(n,c));
+  }
+  if(had!==clipPlanes.length){
+    for(const m of matCache.values()) m.needsUpdate=true;
+    for(const m of allSpecial) m.needsUpdate=true;
+  }
+}
+$('clipAxis').addEventListener('change',()=>{ $('clip').value=100; applyClip(); });
+$('clip').addEventListener('input',applyClip);
+
+/* search */
+const SEARCHABLE=()=>Object.entries(INDEX).filter(([k,v])=>SYSLABEL[v.y]);
+let searchList=null;
+$('q').addEventListener('input',e=>{
+  const q=e.target.value.trim().toLowerCase(), box=$('results'); box.innerHTML='';
+  if(q.length<2) return;
+  if(!searchList) searchList=SEARCHABLE();
+  const out=[];
+  for(const [k,v] of searchList){
+    const name=(v.n||'').toLowerCase(), lat=(v.l||'').toLowerCase();
+    if(name.includes(q)||lat.includes(q)){ out.push([k,v,name.startsWith(q)?0:1]); }
+  }
+  out.sort((a,b)=>a[2]-b[2]||a[1].n.length-b[1].n.length);
+  for(const [k,v] of out.slice(0,15)){
+    const d=document.createElement('div'); d.className='res';
+    d.innerHTML=`<span></span><small></small>`;
+    d.firstChild.textContent=v.n+(v.s?' ('+v.s+')':'');
+    d.lastChild.textContent=SYSLABEL[v.y];
+    d.addEventListener('click',async()=>{
+      if(!loaded[v.y]){ sysOn[v.y]=true; $('c_'+v.y).checked=true; await loadSystem(v.y); }
+      if(!sysOn[v.y]){ sysOn[v.y]=true; $('c_'+v.y).checked=true; }
+      let m=byKey.get(k); if(!m) return;
+      m.userData.hidden=false; refreshAll(); select(m,true);
+      if(innerWidth<=760) $('left').classList.remove('open');
+    });
+    box.appendChild(d);
+  }
+  if(!out.length) box.innerHTML='<div class="sub" style="padding:6px">No match</div>';
+});
+
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+
+
+/* ---------- focus organs (used by Medibot chat: ?organs=heart,liver) ---------- */
+const ORGAN_MAP={
+  brain:{sys:'nervous',re:/cerebr|cerebell|gyrus|frontal lobe|parietal lobe|temporal lobe|occipital lobe|brainstem|medulla oblongata|pons|midbrain|thalam|hippocamp|corpus callosum|cortex/i},
+  heart:{sys:'cardiovascular',re:/ventricle|atrium|heart|valve|leaflet|septum|papillary|coronary|circumflex|interventricular/i},
+  liver:{sys:'visceral',re:/^liver/i},
+  stomach:{sys:'visceral',re:/^stomach/i},
+  'lung-r':{sys:'visceral',re:/right lung|lung.*right|right.*bronch/i},
+  'lung-l':{sys:'visceral',re:/left lung|lung.*left|left.*bronch/i},
+  'kidney-r':{sys:'visceral',re:/^kidney|renal/i,side:'right'},
+  'kidney-l':{sys:'visceral',re:/^kidney|renal/i,side:'left'},
+  intestines:{sys:'visceral',re:/duodenum|jejunum|ileum|colon|caecum|cecum|rectum|appendix|intestine/i,not:/node|mesenter|mesocolon/i},
+};
+const ORGAN_LABEL={brain:'Brain',heart:'Heart',liver:'Liver',stomach:'Stomach','lung-r':'Right lung','lung-l':'Left lung','kidney-r':'Right kidney','kidney-l':'Left kidney',intestines:'Intestines'};
+async function focusOrgans(ids){
+  ids=ids.filter(id=>ORGAN_MAP[id]); if(!ids.length) return;
+  for(const id of ids){ const k=ORGAN_MAP[id].sys; sysOn[k]=true; const c=$('c_'+k); if(c) c.checked=true; await loadSystem(k); }
+  focus.clear();
+  for(const id of ids){
+    const o=ORGAN_MAP[id];
+    for(const m of allMeshes){
+      const e=m.userData.info; if(!e||m.userData.sys!==o.sys) continue;
+      if(!o.re.test(e.n)||(o.not&&o.not.test(e.n))) continue;
+      if(o.side&&e.s!==o.side) continue;
+      focus.add(m); m.userData.hidden=false;
+    }
+  }
+  refreshAll();
+  if(!focus.size) return;
+  const box=new THREE.Box3(); focus.forEach(m=>box.expandByObject(m));
+  const c=box.getCenter(new THREE.Vector3()), size=box.getSize(new THREE.Vector3()).length();
+  const dir=new THREE.Vector3(0,0.15,1).normalize();
+  tween={t0:performance.now(),dur:900,p0:camera.position.clone(),t0v:controls.target.clone(),p1:c.clone().addScaledVector(dir,Math.max(size*1.8,0.35)),t1:c};
+  $('focusTxt').textContent='Showing: '+ids.map(i=>ORGAN_LABEL[i]).join(' · ');
+  $('focusBar').style.display='flex';
+}
+$('focusClear').addEventListener('click',()=>{ focus.clear(); $('focusBar').style.display='none'; refreshMaterials(); flyHome(); });
+
+/* ---------- boot ---------- */
+(async()=>{
+  buildSystems();
+  try{
+    setBoot(.1,'Loading labels and definitions');
+    INDEX=await (await fetch('./data/anatomy_index.json')).json();
+    setBoot(.3,'Loading skeleton');
+    await loadSystem('skeletal'); setBoot(.6,'Loading organs');
+    await loadSystem('visceral'); setBoot(.8,'Loading heart & vessels');
+    await loadSystem('cardiovascular'); setBoot(1,'Ready');
+  }catch(err){ console.error(err); $('bootTxt').textContent='Could not load the model files. Check that the models folder uploaded.'; return; }
+  $('boot').style.opacity=0; setTimeout(()=>$('boot').remove(),700);
+  if(new URLSearchParams(location.search).get('embed')) $('foot').style.display='none';
+  const qp=new URLSearchParams(location.search).get('organs');
+  if(qp) focusOrgans(qp.split(',').map(x=>x.trim()).filter(Boolean)).catch(console.error);
+  // background-load the rest so toggles feel instant
+  for(const k of ['muscular','nervous','joints','lymphoid']) loadSystem(k).catch(()=>{});
+})();
+
+renderer.setAnimationLoop(()=>{ stepTween(); controls.update(); renderer.render(scene,camera); });
+</script>
+</body>
+</html>

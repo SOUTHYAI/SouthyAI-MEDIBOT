@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>SOUTHYAI platform owner</title>
+<style>
+  body{font:15px/1.5 system-ui,sans-serif;max-width:640px;margin:30px auto;padding:0 16px;color:#1d2521}
+  h1{font-size:20px} h2{font-size:15px;margin:26px 0 8px;text-transform:uppercase;letter-spacing:1px;color:#6b7a73}
+  input,select,button{font:inherit;padding:10px 12px;border:1px solid #c9d2cc;border-radius:8px;width:100%;margin:4px 0}
+  button{background:#1d2521;color:#fff;cursor:pointer;border:none} .row{display:flex;gap:8px} .row>*{flex:1}
+  pre{background:#f2f5f3;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-word}
+  .code{font-size:24px;font-weight:800;letter-spacing:2px} .err{color:#b3261e}
+</style>
+</head>
+<body>
+<h1>SOUTHYAI platform owner</h1>
+<p>Only you should use this page. It does nothing without your platform key.</p>
+<input id="key" type="password" placeholder="Platform key" autocomplete="off">
+
+<h2>1. Set up a hospital / practice</h2>
+<input id="name" placeholder="Organisation name (e.g. Greenview Clinic)">
+<div class="row"><input id="code" placeholder="Org code (e.g. GREENVIEW)"><input id="exp" type="date" title="Licence expiry (optional)"></div>
+<div class="row"><input id="adm" placeholder="Their administrator's staff number"><input id="admName" placeholder="Administrator's full name"></div>
+<button id="create">Create organisation</button>
+<div id="out1"></div>
+
+<h2>2. Licence</h2>
+<div class="row"><input id="lcode" placeholder="Org code"><select id="lstatus"><option value="active">Active</option><option value="suspended">Suspended</option></select><input id="lexp" type="date"></div>
+<button id="setlic">Update licence</button>
+<div id="out2"></div>
+
+<h2>3. All organisations</h2>
+<button id="list">Show organisations</button>
+<pre id="out3"></pre>
+
+<script>
+const $=id=>document.getElementById(id);
+async function call(body){
+  const r=await fetch("/api/platform",{method:"POST",headers:{"content-type":"application/json","x-platform-key":$("key").value},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({})); if(!r.ok) throw new Error(j.error||("Error "+r.status)); return j;
+}
+$("create").onclick=async()=>{ $("out1").innerHTML="";
+  try{ const j=await call({action:"org.create",name:$("name").value,code:$("code").value,licenceExpires:$("exp").value||null,adminStaffNumber:$("adm").value,adminName:$("admName").value});
+    $("out1").innerHTML=`<p>Created <b>${j.org.name}</b>. Give the administrator these details privately:</p><pre>Organisation code: ${j.org.code}\nStaff number: ${j.adminStaffNumber}\nActivation code (shown once, valid ${j.validHours}h):</pre><div class="code">${j.activationCode}</div>`;
+  }catch(e){ $("out1").innerHTML=`<p class="err">${e.message}</p>`; } };
+$("setlic").onclick=async()=>{ try{ await call({action:"org.setLicence",code:$("lcode").value,status:$("lstatus").value,expires:$("lexp").value||null}); $("out2").innerHTML="<p>Updated.</p>"; }catch(e){ $("out2").innerHTML=`<p class="err">${e.message}</p>`; } };
+$("list").onclick=async()=>{ try{ const j=await call({action:"org.list"}); $("out3").textContent=j.orgs.map(o=>`${o.name} [${o.code}] ${o.licence_status}${o.licence_expires?" until "+String(o.licence_expires).slice(0,10):""} · ${o.staff_count} staff`).join("\n")||"None yet."; }catch(e){ $("out3").textContent=e.message; } };
+</script>
+</body>
+</html>
